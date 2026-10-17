@@ -1,0 +1,120 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MR HIGH FOODS Attendance</title>
+<style>
+body{font-family:Arial,sans-serif;background:#f1f4f8;margin:0;color:#182230}
+header{background:#17365d;color:white;text-align:center;padding:22px}
+main{max-width:600px;margin:auto;padding:14px}
+section{background:white;border-radius:12px;padding:16px;margin:14px 0}
+button,input,select{width:100%;box-sizing:border-box;padding:12px;margin:7px 0;border-radius:7px;border:1px solid #ccc;font-size:16px}
+button{background:#17365d;color:white;border:0}
+.notice{background:#fff4d6;padding:12px;border-radius:8px;font-size:14px}
+#photoPreview{max-width:100%;display:none;border-radius:8px;margin-top:10px}
+</style>
+</head>
+<body>
+<header>
+<h1>MR HIGH FOODS</h1>
+<p>Employee Attendance System</p>
+</header>
+<main>
+<section>
+<h2>Employee Login</h2>
+<input id="employeeId" placeholder="Employee ID (e.g. MHF001)">
+<input id="employeeName" placeholder="Employee name">
+<button id="loginBtn">Continue</button>
+<p id="loginMessage"></p>
+</section>
+
+<section>
+<h2>Duty Timetable</h2>
+<p><b>Duty starts:</b> 10:50 AM</p>
+<p><b>Duty ends:</b> 11:00 PM</p>
+<p id="today"></p>
+</section>
+
+<section>
+<h2>Mark Attendance</h2>
+<p>Branch par pahunchne ke baad live photo capture karein.</p>
+<input id="camera" type="file" accept="image/*" capture="user">
+<img id="photoPreview" alt="Captured photo">
+<button id="attendanceBtn">Verify Location & Record Time</button>
+<p id="result"></p>
+<div class="notice">
+Location permission on honi chahiye. Browser GPS location check karega. Ye demo abhi online server par data upload nahi karta.
+</div>
+</section>
+
+<section>
+<h2>This Device's Attendance</h2>
+<div id="records"></div>
+</section>
+</main>
+
+<script>
+const $=id=>document.getElementById(id);
+let employee=null;
+let records=JSON.parse(localStorage.getItem("mhf_attendance_demo")||"[]");
+$("today").textContent="Date: "+new Date().toLocaleDateString();
+
+$("loginBtn").onclick=()=>{
+ const id=$("employeeId").value.trim();
+ const name=$("employeeName").value.trim();
+ if(!id||!name){$("loginMessage").textContent="Employee ID aur name bharein.";return;}
+ employee={id,name};
+ $("loginMessage").textContent="Login ready: "+name;
+};
+
+$("camera").onchange=()=>{
+ const file=$("camera").files[0];
+ if(!file)return;
+ $("photoPreview").src=URL.createObjectURL(file);
+ $("photoPreview").style.display="block";
+};
+
+$("attendanceBtn").onclick=()=>{
+ if(!employee){$("result").textContent="Pehle Employee Login karein.";return;}
+ if(!$("camera").files.length){$("result").textContent="Pehle live photo capture karein.";return;}
+ if(!navigator.geolocation){
+  $("result").textContent="Is browser mein GPS available nahi hai.";
+  return;
+ }
+ $("result").textContent="Location check ho rahi hai...";
+ navigator.geolocation.getCurrentPosition(pos=>{
+  const now=new Date();
+  const minutes=now.getHours()*60+now.getMinutes();
+  const start=10*60+50;
+  const late=Math.max(0,minutes-start);
+  const item={
+   id:employee.id,
+   name:employee.name,
+   date:now.toLocaleDateString(),
+   time:now.toLocaleTimeString(),
+   latitude:pos.coords.latitude,
+   longitude:pos.coords.longitude,
+   lateMinutes:late
+  };
+  records.push(item);
+  localStorage.setItem("mhf_attendance_demo",JSON.stringify(records));
+  $("result").textContent="Time recorded: "+item.time+
+   ". GPS location recorded on this device. "+
+   (late>0?"Start-time comparison: "+late+" minutes after 10:50 AM.":"On or before scheduled start.");
+  render();
+ },()=>{
+  $("result").textContent="Location verify nahi ho payi. Phone settings mein Location aur browser permission on karein.";
+ },{enableHighAccuracy:true,timeout:15000,maximumAge:0});
+};
+
+function render(){
+ $("records").innerHTML=records.slice().reverse().map(r=>
+  "<p>"+r.date+" — "+r.time+" — "+r.id+" — "+r.name+"</p>"
+ ).join("")||"Abhi koi attendance record nahi hai.";
+}
+render();
+</script>
+</body>
+</html>
